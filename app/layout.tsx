@@ -4,6 +4,9 @@ import "./globals.css";
 import { cn } from "@/lib/utils";
 import LightRays from "@/components/LightRays";
 import Navbar from "@/components/Navbar";
+import { PostHogProvider } from "./providers";
+import { PostHogPageView } from "./pageview";
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -39,26 +42,31 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-screen">
-        <Navbar />
+        <PostHogProvider>
+          <Suspense fallback={null}>
+            <PostHogPageView />
+          </Suspense>
+          <Navbar />
 
-        <div className="absolute inset-0 top-0 z-[-1] min-h-screen">
-          <LightRays
-            raysOrigin="top-center"
-            raysColor="#07e7fd"
-            raysSpeed={0.5}
-            lightSpread={0.5}
-            rayLength={3}
-            followMouse={true}
-            mouseInfluence={0.05}
-            noiseAmount={0}
-            distortion={0}
-            pulsating={false}
-            fadeDistance={1}
-            saturation={1}
-          />
-        </div>
+          <div className="absolute inset-0 top-0 z-[-1] min-h-screen">
+            <LightRays
+              raysOrigin="top-center"
+              raysColor="#07e7fd"
+              raysSpeed={0.5}
+              lightSpread={0.5}
+              rayLength={3}
+              followMouse={true}
+              mouseInfluence={0.05}
+              noiseAmount={0}
+              distortion={0}
+              pulsating={false}
+              fadeDistance={1}
+              saturation={1}
+            />
+          </div>
 
-        {children}
+          {children}
+        </PostHogProvider>
       </body>
     </html>
   );
