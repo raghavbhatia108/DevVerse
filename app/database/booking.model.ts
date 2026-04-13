@@ -1,4 +1,4 @@
-import { Schema, model, models, Document, Types } from 'mongoose';
+import { Schema, model, models, Document, Types, CallbackWithoutResultAndOptionalError } from 'mongoose';
 import Event from './event.model';
 
 // TypeScript interface for Booking document
@@ -37,7 +37,7 @@ const BookingSchema = new Schema<IBooking>(
 );
 
 // Pre-save hook to validate events exists before creating booking
-BookingSchema.pre('save', async function (next) {
+BookingSchema.pre('save', async function (next: CallbackWithoutResultAndOptionalError) {
   const booking = this as IBooking;
 
   // Only validate eventId if it's new or modified
