@@ -12,7 +12,7 @@ interface Props {
 
 const EventCard = ({ title, image, slug, location, date, time }: Props) => {
   return (
-    <Link href={`/events/${slug}`} id="event-card">
+    <Link href={`/events/${slug}`} id="event-card" className="group">
       <Image
         src={image}
         alt={title}
@@ -31,7 +31,7 @@ const EventCard = ({ title, image, slug, location, date, time }: Props) => {
 
         <p className="location">{location}</p>
       </div>
-      <p className="title">{title}</p>
+      <p className="title group-hover:text-primary">{title}</p>
       <div className="datetime">
         <div>
           <Image
