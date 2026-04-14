@@ -8,7 +8,7 @@ const page = async () => {
   const { events } = await response.json();
   return (
     <>
-      <section>
+      <section className="p-10">
         <h1 className="text-center mt-10">
           The Hub for every Dev <br /> Event you can&apos;t miss
         </h1>
@@ -16,11 +16,11 @@ const page = async () => {
           Hackathons, Meetups and Conferences, All in one place!
         </p>
         <ExploreBtn />
-        <div className="mt-10 space-y-7 px-10">
+        <div className="mt-10 space-y-7">
           <h3>Featured Events</h3>
           <ul className="events">
             {events.map((event: IEvent) => (
-              <li key={event.title}>
+              <li key={event.title} className="list-none">
                 <EventCard {...event} />
               </li>
             ))}

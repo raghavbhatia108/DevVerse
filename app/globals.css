@@ -100,7 +100,7 @@
 }
 
 @utility glass {
-  @apply bg-[#12121280]/50 rounded-md bg-clip-padding backdrop-filter backdrop-blur-xl border-b border-border-dark;
+  @apply bg-[#12121280]/50 rounded-md bg-clip-padding backdrop-filter backdrop-blur-xl ;
 }
 
 @utility card-shadow {
@@ -171,9 +171,7 @@
   .events {
     @apply grid md:grid-cols-3 gap-10 sm:grid-cols-2 grid-cols-1;
   }
-  li{
-    @apply list-none;
-  }
+
 
   #event-card {
     @apply flex flex-col gap-3;
@@ -211,7 +209,7 @@
         @apply flex flex-[2] flex-col gap-8 max-lg:w-full;
 
         .banner {
-          @apply max-h-[457px] w-full rounded-lg object-cover;
+          @apply max-h-[300px] w-full rounded-lg object-cover;
         }
 
         .agenda {
