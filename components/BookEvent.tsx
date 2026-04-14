@@ -1,16 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { createBooking } from "@/lib/actions/booking.actions";
+import { FormEvent, useState } from "react";
 
-const BookEvent = () => {
+const BookEvent = ({ eventId, slug }: { eventId: string; slug: string }) => {
   const [email, setEmail] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setTimeout(() => {
+    setError(null);
+
+    const { success, error: bookingError } = await createBooking({
+      eventId,
+      slug,
+      email,
+    });
+
+    console.log("Booking response:", { success, bookingError });
+
+    if (success) {
       setSubmitted(true);
-    }, 1000);
+    } else {
+      setError(
+        typeof bookingError === "string"
+          ? bookingError
+          : String(bookingError || "Booking failed"),
+      );
+      console.error("Booking failed:", bookingError);
+    }
   };
+
   return (
     <div id="book-event">
       {submitted ? (
@@ -28,6 +49,7 @@ const BookEvent = () => {
               required
             />
           </div>
+          {error && <p className="text-red-500">{error}</p>}
           <button className="button-submit" type="submit">
             Submit
           </button>

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
@@ -5,7 +6,7 @@ import { getSimilarEventsBySlug } from "@/lib/actions/events.actions";
 import { IEvent } from "@/app/database/event.model";
 import EventCard from "@/components/EventCard";
 
-const EventDetailItem = async ({
+const EventDetailItem = ({
   icon,
   alt,
   label,
@@ -13,29 +14,31 @@ const EventDetailItem = async ({
   icon: string;
   alt: string;
   label: string;
-}) => {
-  return (
-    <div className="flex-row-gap-2">
-      <Image src={icon} alt={alt} width={17} height={17} />
-      <p>{label}</p>
-    </div>
-  );
-};
+}) => (
+  <div className="flex-row-gap-2">
+    <Image
+      src={icon}
+      alt={alt}
+      width={17}
+      height={17}
+      style={{ width: "auto", height: "auto" }}
+    />
+    <p>{label}</p>
+  </div>
+);
 
-const EventAgenda = async ({ agenda }: { agenda: string[] }) => {
-  return (
-    <div className="agenda">
-      <h2>Agenda</h2>
-      <ul>
-        {agenda.map((item, index) => (
-          <li key={index}>{item}</li>
-        ))}
-      </ul>
-    </div>
-  );
-};
+const EventAgenda = ({ agenda }: { agenda: string[] }) => (
+  <div className="agenda">
+    <h2>Agenda</h2>
+    <ul>
+      {agenda.map((item, index) => (
+        <li key={index}>{item}</li>
+      ))}
+    </ul>
+  </div>
+);
 
-const EventTags = async ({ tags }: { tags: string[] }) => (
+const EventTags = ({ tags }: { tags: string[] }) => (
   <div className="flex flex-row-gap-2 flex-wrap">
     {tags.map((tag) => (
       <div className="pill" key={tag}>
@@ -45,14 +48,25 @@ const EventTags = async ({ tags }: { tags: string[] }) => (
   </div>
 );
 
-const EventDetailsPage = async ({ params }: { params: { slug: string } }) => {
-  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+const EventDetailsContent = async ({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) => {
   const { slug } = await params;
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+  if (!BASE_URL) {
+    throw new Error("NEXT_PUBLIC_BASE_URL is not defined");
+  }
+
   const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
     cache: "no-store",
   });
+  const response = await request.json();
+
   const {
     event: {
+      _id,
       description,
       image,
       overview,
@@ -65,14 +79,13 @@ const EventDetailsPage = async ({ params }: { params: { slug: string } }) => {
       organizer,
       tags,
     },
-  } = await request.json();
+  } = response;
 
   if (!description || !image || !overview || !date || !time || !location) {
     notFound();
   }
 
   const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
-
   const bookings = 10;
 
   return (
@@ -89,6 +102,8 @@ const EventDetailsPage = async ({ params }: { params: { slug: string } }) => {
             width={500}
             height={500}
             className="banner"
+            loading="eager"
+            style={{ width: "auto", height: "auto" }}
           />
           <section className="flex-col-gap-2">
             <h2>Overview</h2>
@@ -133,7 +148,7 @@ const EventDetailsPage = async ({ params }: { params: { slug: string } }) => {
                 Be the first one to book for this event!
               </p>
             )}
-            <BookEvent />
+            <BookEvent eventId={_id} slug={slug} />
           </div>
         </aside>
       </div>
@@ -149,5 +164,17 @@ const EventDetailsPage = async ({ params }: { params: { slug: string } }) => {
     </section>
   );
 };
+
+const EventDetailsPage = ({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) => (
+  <Suspense
+    fallback={<div className="text-center py-10">Loading event...</div>}
+  >
+    <EventDetailsContent params={params} />
+  </Suspense>
+);
 
 export default EventDetailsPage;

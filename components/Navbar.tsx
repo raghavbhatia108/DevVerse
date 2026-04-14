@@ -8,8 +8,10 @@ const Navbar = () => {
           <Image
             src="/icons/DevVerseLogo.png"
             alt="DevHub Logo"
-            width={200}
+            width={150}
             height={200}
+            loading="eager"
+            style={{ width: "auto", height: "auto" }}
           />
         </Link>
         <ul>

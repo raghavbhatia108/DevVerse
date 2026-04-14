@@ -1,11 +1,8 @@
-import EventCard from "@/components/EventCard";
+import { Suspense } from "react";
 import ExploreBtn from "@/components/ExploreBtn";
-import { IEvent } from "@/app/database/event.model";
+import EventsList from "@/components/EventsList";
 
-const page = async () => {
-  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-  const response = await fetch(`${BASE_URL}/api/events`, { cache: "no-store" });
-  const { events } = await response.json();
+const page = () => {
   return (
     <>
       <section className="p-10">
@@ -18,13 +15,13 @@ const page = async () => {
         <ExploreBtn />
         <div className="mt-10 space-y-7">
           <h3>Featured Events</h3>
-          <ul className="events">
-            {events.map((event: IEvent) => (
-              <li key={event.title} className="list-none">
-                <EventCard {...event} />
-              </li>
-            ))}
-          </ul>
+          <Suspense
+            fallback={
+              <div className="text-center py-10">Loading events...</div>
+            }
+          >
+            <EventsList />
+          </Suspense>
         </div>
       </section>
     </>

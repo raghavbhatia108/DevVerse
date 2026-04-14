@@ -14,7 +14,13 @@ const ExploreBtn = () => {
     >
       <a href="#events">
         Explore Events!
-        <Image src="icons/arrow-down.svg" alt="Arrow" width={20} height={20} />
+        <Image
+          src="icons/arrow-down.svg"
+          alt="Arrow"
+          width={20}
+          height={20}
+          style={{ width: "auto", height: "auto" }}
+        />
       </a>
     </button>
   );
