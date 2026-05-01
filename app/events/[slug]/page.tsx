@@ -1,12 +1,18 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import BookEvent from "@/components/BookEvent";
+import { ModeBadge } from "@/components/ui/Badge";
 import { getSimilarEventsBySlug } from "@/lib/actions/events.actions";
+import { getBookingCount } from "@/lib/actions/booking.actions";
 import { IEvent } from "@/app/database/event.model";
 import EventCard from "@/components/EventCard";
+import { formatDate, formatTime } from "@/lib/utils";
 
-const EventDetailItem = ({
+/* ─── Sub-components ──────────────────────────────────────────── */
+
+const DetailRow = ({
   icon,
   alt,
   label,
@@ -15,38 +21,69 @@ const EventDetailItem = ({
   alt: string;
   label: string;
 }) => (
-  <div className="flex-row-gap-2">
+  <div className="detail-row">
     <Image
       src={icon}
       alt={alt}
-      width={17}
-      height={17}
+      width={16}
+      height={16}
       style={{ width: "auto", height: "auto" }}
     />
-    <p>{label}</p>
+    <span>{label}</span>
   </div>
 );
 
-const EventAgenda = ({ agenda }: { agenda: string[] }) => (
+const AgendaSection = ({ agenda }: { agenda: string[] }) => (
   <div className="agenda">
     <h2>Agenda</h2>
     <ul>
-      {agenda.map((item, index) => (
-        <li key={index}>{item}</li>
+      {agenda.map((item, i) => (
+        <li key={i}>{item}</li>
       ))}
     </ul>
   </div>
 );
 
-const EventTags = ({ tags }: { tags: string[] }) => (
-  <div className="flex flex-row-gap-2 flex-wrap">
+const TagsRow = ({ tags }: { tags: string[] }) => (
+  <div className="tags-row">
     {tags.map((tag) => (
-      <div className="pill" key={tag}>
+      <span className="pill" key={tag}>
         {tag}
-      </div>
+      </span>
     ))}
   </div>
 );
+
+/* ─── Helpers ─────────────────────────────────────────────────── */
+
+function parseArrayField(value: string[] | string | undefined): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    if (value.length === 1) {
+      try {
+        const parsed = JSON.parse(value[0]);
+        if (Array.isArray(parsed)) return parsed as string[];
+      } catch {
+        /* not JSON — treat as plain array */
+      }
+    }
+    return value;
+  }
+  try {
+    const parsed = JSON.parse(value as string);
+    return Array.isArray(parsed) ? (parsed as string[]) : [value as string];
+  } catch {
+    return [value as string];
+  }
+}
+
+function getBaseUrl() {
+  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+}
+
+/* ─── Main content (async server component) ───────────────────── */
 
 const EventDetailsContent = async ({
   params,
@@ -54,125 +91,205 @@ const EventDetailsContent = async ({
   params: Promise<{ slug: string }>;
 }) => {
   const { slug } = await params;
-  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
-  if (!BASE_URL) {
-    throw new Error("NEXT_PUBLIC_BASE_URL is not defined");
+
+  /* Fetch event */
+  let event: IEvent | null = null;
+  try {
+    const res = await fetch(`${getBaseUrl()}/api/events/${slug}`, {
+      next: { revalidate: 60 },
+    });
+    if (res.status === 404) notFound();
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    event = (await res.json()).event ?? null;
+  } catch (err) {
+    const digest = (err as { digest?: string })?.digest ?? "";
+    if (digest.startsWith("NEXT_NOT_FOUND")) throw err;
+    throw new Error("Failed to load event. Please try again later.");
   }
 
-  const request = await fetch(`${BASE_URL}/api/events/${slug}`, {
-    cache: "no-store",
-  });
-  const response = await request.json();
+  if (!event) notFound();
 
   const {
-    event: {
-      _id,
-      description,
-      image,
-      overview,
-      date,
-      time,
-      location,
-      mode,
-      agenda,
-      audience,
-      organizer,
-      tags,
-    },
-  } = response;
+    _id,
+    title,
+    description,
+    image,
+    overview,
+    date,
+    time,
+    location,
+    venue,
+    mode,
+    audience,
+    organizer,
+  } = event as IEvent & { _id: string };
 
-  if (!description || !image || !overview || !date || !time || !location) {
-    notFound();
-  }
+  const agenda = parseArrayField((event as IEvent).agenda);
+  const tags = parseArrayField((event as IEvent).tags);
 
-  const similarEvents: IEvent[] = await getSimilarEventsBySlug(slug);
-  const bookings = 10;
+  const [similarEvents, bookingCount] = await Promise.all([
+    getSimilarEventsBySlug(slug),
+    getBookingCount(slug),
+  ]);
 
   return (
-    <section id="event" className="p-10">
-      <div className="header">
-        <h1>Event Description</h1>
-        <p className="mt-2">{description}</p>
+    <article id="event">
+      {/* ── Breadcrumb ──────────────────────────────────── */}
+      <nav className="breadcrumb" aria-label="Breadcrumb">
+        <Link href="/">Home</Link>
+        <span aria-hidden="true">/</span>
+        <Link href="/#events">Events</Link>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">{title}</span>
+      </nav>
+
+      {/* ── Event header ────────────────────────────────── */}
+      <div className="event-header-meta">
+        <ModeBadge mode={mode} />
       </div>
+      <div className="flex flex-col gap-4 py-8">
+        <h1 className="event-title" style={{ fontSize: "3rem" }}>
+          {title}
+        </h1>
+        <p className="event-description text-muted">{description}</p>
+      </div>
+
+      {/* ── Two-column layout ───────────────────────────── */}
       <div className="details">
+        {/* Left: content */}
         <div className="content">
           <Image
             src={image}
-            alt="Event"
-            width={500}
-            height={500}
+            alt={title}
+            width={800}
+            height={400}
             className="banner"
             loading="eager"
-            style={{ width: "auto", height: "auto" }}
+            style={{ width: "100%", height: "auto" }}
           />
+
           <section className="flex-col-gap-2">
             <h2>Overview</h2>
             <p>{overview}</p>
           </section>
+
           <section className="flex-col-gap-2">
             <h2>Event Details</h2>
-            <EventDetailItem
-              icon="/icons/calendar.svg"
-              alt="Date"
-              label={date}
-            />
-            <EventDetailItem icon="/icons/clock.svg" alt="Time" label={time} />
-            <EventDetailItem
-              icon="/icons/pin.svg"
-              alt="Location"
-              label={location}
-            />
-            <EventDetailItem icon="/icons/mode.svg" alt="Mode" label={mode} />
-            <EventDetailItem
-              icon="/icons/audience.svg"
-              alt="Audience"
-              label={audience}
-            />
+            <div className="detail-grid">
+              <DetailRow
+                icon="/icons/calendar.svg"
+                alt="Date"
+                label={formatDate(date)}
+              />
+              <DetailRow
+                icon="/icons/clock.svg"
+                alt="Time"
+                label={formatTime(time)}
+              />
+              <DetailRow
+                icon="/icons/pin.svg"
+                alt="Location"
+                label={`${venue ? venue + ", " : ""}${location}`}
+              />
+              <DetailRow
+                icon="/icons/mode.svg"
+                alt="Mode"
+                label={mode.charAt(0).toUpperCase() + mode.slice(1)}
+              />
+              <DetailRow
+                icon="/icons/audience.svg"
+                alt="Audience"
+                label={audience}
+              />
+            </div>
           </section>
-          <EventAgenda agenda={JSON.parse(agenda[0])} />
+
+          {agenda.length > 0 && <AgendaSection agenda={agenda} />}
+
           <section className="flex-col-gap-2">
             <h2>About the Organizer</h2>
             <p>{organizer}</p>
           </section>
-          <EventTags tags={JSON.parse(tags[0])} />
+
+          {tags.length > 0 && <TagsRow tags={tags} />}
         </div>
+
+        {/* Right: sticky booking card */}
         <aside className="booking">
           <div className="signup-card">
+            <p className="signup-card-label">Secure your spot</p>
             <h2>Book your Spot!</h2>
-            {bookings > 0 ? (
-              <p className="text-sm">
-                {bookings} people have already booked for this event.
+            {bookingCount > 0 ? (
+              <p className="text-sm text-light-200">
+                <span className="text-primary font-semibold">
+                  {bookingCount}
+                </span>{" "}
+                {bookingCount === 1 ? "person has" : "people have"} already
+                registered.
               </p>
             ) : (
-              <p className="text-sm">
-                Be the first one to book for this event!
+              <p className="text-sm text-light-200">
+                Be the first to register for this event!
               </p>
             )}
-            <BookEvent eventId={_id} slug={slug} />
+            <BookEvent eventId={String(_id)} />
           </div>
         </aside>
       </div>
-      <div className="flex w-full flex-col gap-4 pt-10">
-        <h2>Similar Events You Might Like</h2>
-        <div className="events">
-          {similarEvents.length > 0 &&
-            similarEvents.map((similarEvent) => (
-              <EventCard key={similarEvent.title} {...similarEvent} />
+
+      {/* ── Similar events ──────────────────────────────── */}
+      {(similarEvents as IEvent[]).length > 0 && (
+        <section className="similar-events">
+          <h2>Similar Events You Might Like</h2>
+          <ul className="events">
+            {(similarEvents as IEvent[]).map((e) => (
+              <li
+                key={String((e as IEvent & { _id: string })._id)}
+                className="list-none"
+              >
+                <EventCard {...e} />
+              </li>
             ))}
-        </div>
-      </div>
-    </section>
+          </ul>
+        </section>
+      )}
+    </article>
   );
 };
 
+/* ─── Skeleton ────────────────────────────────────────────────── */
+const EventDetailSkeleton = () => (
+  <div className="event-skeleton animate-pulse">
+    <div className="h-4 w-48 rounded bg-dark-200 mb-8" />
+    <div className="h-8 w-2/3 rounded bg-dark-200 mb-3" />
+    <div className="h-4 w-1/2 rounded bg-dark-200 mb-12" />
+    <div className="flex gap-12 flex-col lg:flex-row">
+      <div className="flex-[2] flex flex-col gap-8">
+        <div className="h-[320px] w-full rounded-xl bg-dark-200" />
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-4 rounded bg-dark-200"
+              style={{ width: `${90 - i * 10}%` }}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="flex-1">
+        <div className="h-72 rounded-xl bg-dark-200" />
+      </div>
+    </div>
+  </div>
+);
+
+/* ─── Page export ─────────────────────────────────────────────── */
 const EventDetailsPage = ({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) => (
-  <Suspense
-    fallback={<div className="text-center py-10">Loading event...</div>}
-  >
+  <Suspense fallback={<EventDetailSkeleton />}>
     <EventDetailsContent params={params} />
   </Suspense>
 );

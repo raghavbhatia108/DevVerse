@@ -1,23 +1,34 @@
 import Link from "next/link";
 import Image from "next/image";
+
 const Navbar = () => {
   return (
     <header>
       <nav>
-        <Link href="/">
+        {/* Logo */}
+        <Link href="/" className="logo" aria-label="DevVerse home">
           <Image
             src="/icons/DevVerseLogo.png"
-            alt="DevHub Logo"
-            width={150}
-            height={200}
+            alt="DevVerse"
+            width={130}
+            height={40}
             loading="eager"
-            style={{ width: "auto", height: "auto" }}
+            style={{ width: "auto", height: "36px" }}
           />
         </Link>
+
+        {/* Nav links */}
         <ul>
-          <Link href="/">Home</Link>
-          <Link href="/">Events</Link>
-          <Link href="/">Create Event</Link>
+          <li className="list-none">
+            <Link href="/" className="nav-link">
+              Home
+            </Link>
+          </li>
+          <li className="list-none">
+            <Link href="/#events" className="nav-link">
+              Events
+            </Link>
+          </li>
         </ul>
       </nav>
     </header>

@@ -16,10 +16,15 @@ export async function POST(req: NextRequest) {
         }
 
         const file = formData.get("image") as File;
-        let tags = formData.get("tags") as string;
+        const rawTags = formData.get("tags") as string | null;
 
     if(!file)
         return NextResponse.json({message:"Image file is required"}, {status:400});
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+        return NextResponse.json({message:"Only image files are accepted"}, {status:400});
+    }
 
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -27,12 +32,23 @@ export async function POST(req: NextRequest) {
     const uploadResult = await new Promise((resolve, reject)=>{
         cloudinary.uploader.upload_stream({resource_type:"image", folder: "DevVerse"}, (error, result)=>{
             if(error) reject(error);
-            else resolve(result);   
+            else resolve(result);
     }).end(buffer)});
 
     event.image = (uploadResult as { secure_url: string }).secure_url;
 
-        const createdEvent = await Event.create({...event, tags:tags});
+    // Parse tags: accept JSON array string or comma-separated string
+    let parsedTags: string[] = [];
+    if (rawTags) {
+        try {
+            const attempt = JSON.parse(rawTags);
+            parsedTags = Array.isArray(attempt) ? attempt : [rawTags];
+        } catch {
+            parsedTags = rawTags.split(",").map((t) => t.trim()).filter(Boolean);
+        }
+    }
+
+        const createdEvent = await Event.create({...event, tags: parsedTags});
         return NextResponse.json({message:"Event created successfully", event:createdEvent}, {status:201});
     }
     catch(e){
